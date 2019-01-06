@@ -1,7 +1,12 @@
 package com.todotrain.nekketsu.todotrain;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.os.Build;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -28,6 +33,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         listView = findViewById(R.id.listView);
+
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION,},
+                    1000);
+        }
+        Intent intent = new Intent(getApplication(), GPSService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        }else{
+            startService(intent);
+        }
 
         AssetManager assetManager = getResources().getAssets();
 
@@ -83,11 +102,30 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
-            for(int i=0; i<ShareData.railWays.size(); i++){
-                Log.d("name", ShareData.railWays.get(i).jp_name);
-                for(int j=0; j<ShareData.railWays.get(i).bssids.size(); j++){
-                    Log.d("bssid", ShareData.railWays.get(i).bssids.get(j));
+
+            //駅の緯度経度を登録する
+            InputStream is = this.getAssets().open("日比谷線.csv");
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+            String str;
+            while((str=br.readLine()) != null){
+                String csv[] = str.split(",");
+                for(int i=0; i<csv.length; i++){
+                    System.out.println(csv[i]);
                 }
+                for(int i=0; i<ShareData.railWays.size(); i++){
+                    RailWay railWay = ShareData.railWays.get(i);
+                    if(railWay.jp_name.equals(csv[3])){
+                        railWay.lati = Double.parseDouble(csv[11]);
+                        railWay.longi = Double.parseDouble(csv[10]);
+                        ShareData.railWays.set(i, railWay);
+                        break;
+                    }
+                }
+            }
+
+            for(int i=0; i<ShareData.railWays.size(); i++){
+                RailWay railWay = ShareData.railWays.get(i);
+                Log.d("railway", railWay.jp_name + "\n" + railWay.lati + "\n" + railWay.longi);
             }
         } catch (IOException e) {
             e.printStackTrace();
