@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -14,9 +15,12 @@ import android.view.View;
 import android.widget.ListView;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
+//import org.sqlite.database.sqlite.SQLiteDatabase;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -31,6 +35,36 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        AssetManager assetManager = getResources().getAssets();
+
+        //sqliteの初期化
+        System.loadLibrary("sqliteX");
+        DBOpenHelper helper = new DBOpenHelper(getApplicationContext());
+        //時刻表JSON読み込み
+        try{
+            SQLiteDatabase db = helper.getWritableDatabase();
+            String files[] = assetManager.list("TimeTable");
+            for(int i=0; i<files.length; i++){
+                String fileName = files[i];
+                fileName = fileName.replace(".json", "");
+                InputStream is = this.getAssets().open(fileName);
+                String json = InputStreamToString(is);
+                JSONArray parentJsonObj = new JSONArray(json); //駅ごとのJSONArray
+                for(int j=0; j<parentJsonObj.length(); j++){
+                    String stationName = parentJsonObj.getJSONObject(j).getString("odpt:station");
+                    String tableName = fileName + "_" + stationName;
+                    db.execSQL("CREATE TABLE IF NOT EXISTS" + tableName + " (json JSON)");
+                    //時刻表のJSONArray
+                    JSONArray stationTimeTableObject = parentJsonObj.getJSONObject(j).getJSONArray("odpt:stationTimetableObject");
+                    for(int k=0; k<stationTimeTableObject.length(); k++){
+                        db.execSQL("INSERT INTO " + tableName + " VALUES(json(" + stationTimeTableObject.getJSONObject(k) + "))");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         listView = findViewById(R.id.listView);
 
@@ -47,8 +81,6 @@ public class MainActivity extends AppCompatActivity {
         }else{
             startService(intent);
         }
-
-        AssetManager assetManager = getResources().getAssets();
 
         //路線をリストに追加する
         try{

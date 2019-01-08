@@ -97,9 +97,14 @@ public class GPSService extends Service implements LocationListener {
     public void onLocationChanged(Location location) {
         Log.d("GPS", location.getLatitude() + "," + location.getLongitude());
 
-        //Distanceを求めて一番距離が短い駅を算出
-        //その駅とToDo先の駅までの電車を検索
-        //電車が来る○分前に通知を出す
+        //取得された座標が前回と違う場合処理する
+        if(ShareData.location[0] != location.getLatitude() || ShareData.location[1] != location.getLongitude()){
+            ShareData.location[0] = location.getLatitude();
+            ShareData.location[1] = location.getLongitude();
+            //Distanceを求めて一番距離が短い駅を算出
+            //その駅とToDo先の駅までの電車を検索
+            //電車が来る○分前に通知を出す
+        }
     }
 
     @Override
